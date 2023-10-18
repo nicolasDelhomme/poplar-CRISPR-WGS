@@ -26,8 +26,8 @@ ln -s /mnt/ada/projects/aspseq/mschmid/poplar-CRISPR-WGS/RNA-seq/preprocessed an
 
 There are two CRISPR lines with different targets:
 
-* For the Line 26, the target locus is `Potri.006G174000/Potra001877g14982`
-* For the Line 03 it is `Potri.018G096200/Potra001273g10998`
+* For the Line 26, the target locus is `Potri.006G174000/Potra001877g14982` (Potra2n6c13821)
+* For the Line 03 it is `Potri.018G096200/Potra001273g10998` ( 	Potra2n6c13821)
 
 ## Tasks
 
