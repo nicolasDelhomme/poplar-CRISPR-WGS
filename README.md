@@ -39,3 +39,21 @@ Run the BioQA and the DE to compare line 3 and 26 to T89 and versus each-other.
 
 The aim is to look for off-target effect of CRISPR in other genes of the same family. Primarily from the genes in the SM and LSM families.
 
+The guide RNAs are:
+
+Line3_CRISPR_4108_gRNA1: GACTAGACGTACAATGGGTT
+Line3_CRISPR_4108_gRNA2: GCACATAAGCAGATACGCTC
+
+Line26_CRISPR_4110_gRNA1: GGTCATAATACGCGTGGACTT
+Line26_CRISPR_4110_gRNA2: TATAAAGAGCAAGAATTGAC
+
+1. Ask Daniella on which genome she designed the guides. (Nico)
+2. Align Potra2n6c13821 to the new assembly, figure out how many loci are present. Blastn. (Kristina)
+3. WGS, look for indels / SNPs, in particular for the loci identified in the DE report (1.2.2 - other genes of interest). BWA -> GATK. (Kristina)
+4. Align the gRNA to the assembly (blastn) and intersect with 3. To identify and ignore effects due to the transformation or other artefacts. If there are some relevant cases, we could check if there are within a gene. (Kristina)
+5. align RNA-Seq with STAR and look at the loci targeted by the gRNA. (Fai)
+
+SNPs / Indels (Yes) -> Overlap gRNA (Yes) -> Is it within / next to a gene (Yes) => putative off-target.
+
+For SNPs, extend to a 100bp total and check for overlap with putative gRNA target sites.
+
