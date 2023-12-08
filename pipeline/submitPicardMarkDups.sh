@@ -3,13 +3,13 @@
 set -eu
 
 # define variables
-proj=u2023021
+proj=u2023008
 email=kristina.benevides@umu.se
-in=/mnt/ada/projects/arabidopsis/swenkel/arabidopsis-frosty/bwa
-out=/mnt/ada/projects/arabidopsis/swenkel/arabidopsis-frosty/picard
+in=/mnt/ada/projects/aspseq/mschmid/poplar-CRISPR-WGS/bwa
+out=/mnt/ada/projects/aspseq/mschmid/poplar-CRISPR-WGS/picard
 reference=$(realpath ../reference)
-picard_sif=$(realpath ../singularity/picard_2.27.1.sif)
-samtools_sif=$(realpath ../singularity/samtools_1.16.sif)
+picard_sif=$(realpath ../singularity/kogia/picard_2.27.1.sif)
+samtools_sif=$(realpath ../singularity/kogia/samtools_1.16.sif)
 
 if [ ! -d $out ]; then
   mkdir -p $out

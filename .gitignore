@@ -48,4 +48,5 @@ reference
 reference/
 singularity
 singularity/
-
+logs
+logs/
