@@ -5,10 +5,10 @@ set -eu
 # define variables
 proj=u2023008
 email=kristina.benevides@umu.se
-in=/mnt/ada/projects/aspseq/mschmid/poplar-CRISPR-WGS/bwa
-out=/mnt/ada/projects/aspseq/mschmid/poplar-CRISPR-WGS/picard
+in=/mnt/ada/projects/aspseq/mschmid/poplar-CRISPR-WGS/bwa/v1.1
+out=/mnt/ada/projects/aspseq/mschmid/poplar-CRISPR-WGS/picard/v1.1
 reference=$(realpath ../reference)
-picard_sif=$(realpath ../singularity/kogia/picard_2.27.1.sif)
+picard_sif=$(realpath ../singularity/picard_2.27.1.sif)
 samtools_sif=$(realpath ../singularity/kogia/samtools_1.16.sif)
 
 if [ ! -d $out ]; then

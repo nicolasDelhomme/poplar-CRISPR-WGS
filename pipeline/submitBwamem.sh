@@ -6,11 +6,11 @@ set -eu
 proj=u2023008
 email=kristina.benevides@umu.se
 in=$(realpath ../data/WGS)
-out=/mnt/ada/projects/aspseq/mschmid/poplar-CRISPR-WGS/bwa
+out=/mnt/ada/projects/aspseq/mschmid/poplar-CRISPR-WGS/bwa/v1.1
 bwa_sif=$(realpath ../singularity/kogia/bwa_0.7.17.sif)
 samtools_sif=$(realpath ../singularity/kogia/samtools_1.16.sif)
 #index=$(realpath ../reference/indices/bwa/Potra02_genome_hardmasked.fasta.gz)
-index=/mnt/picea/storage/reference/Populus-tremula/v2.2/indices/bwa/Potra02_genome_hardmasked.fasta.gz
+index=/mnt/picea/storage/reference/Populus-tremula/v1.1/indices/bwa/Potra01-genome.fa
 
 if [ ! -d $out ]; then
   mkdir -p $out
