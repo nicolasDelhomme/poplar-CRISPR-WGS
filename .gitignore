@@ -50,3 +50,7 @@ singularity
 singularity/
 logs
 logs/
+results
+results/
+
+out*

@@ -5,8 +5,8 @@ set -eu
 # define variables
 proj=u2023008
 email=kristina.benevides@umu.se
-in=/mnt/ada/projects/aspseq/mschmid/poplar-CRISPR-WGS/bwa/v1.1
-out=/mnt/ada/projects/aspseq/mschmid/poplar-CRISPR-WGS/picard/v1.1
+in=/mnt/ada/projects/aspseq/mschmid/poplar-CRISPR-WGS/WGS/bwa/v2.2
+out=/mnt/ada/projects/aspseq/mschmid/poplar-CRISPR-WGS/WGS/picard/v2.2
 reference=$(realpath ../reference)
 picard_sif=$(realpath ../singularity/picard_2.27.1.sif)
 samtools_sif=$(realpath ../singularity/kogia/samtools_1.16.sif)
@@ -19,7 +19,7 @@ fi
 export SINGULARITY_BINDPATH="/mnt:/mnt"
 
 # run
-for BAM in $(find $in -name "*.sorted.bam"); do
+for BAM in $(find $in -name "*line3*.sorted.bam"); do
 
 sbatch -A $proj --mail-user $email -J $(basename ${BAM/.sorted.bam/}) \
 	runPicardMarkDuplicatesWithMateCigar.sh $picard_sif $samtools_sif \

@@ -4,7 +4,7 @@ set -eu
 
 proj=u2023008
 mail=kristina.benevides@umu.se
-in=/mnt/ada/projects/aspseq/mschmid/poplar-CRISPR-WGS
+in=/mnt/ada/projects/aspseq/mschmid/poplar-CRISPR-WGS/WGS
 out=$in/multiqc
 multiqc_sif=$(realpath ../singularity/multiqc_1.18.sif)
 

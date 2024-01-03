@@ -21,7 +21,7 @@ USAGETXT=\
 # vars
 THREADS=1
 JavaMem=16G
-MIN=-1
+MIN=1000
 
 # options
 while getopts j:m: option
