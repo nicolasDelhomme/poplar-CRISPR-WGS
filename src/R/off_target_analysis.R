@@ -8,6 +8,7 @@ suppressPackageStartupMessages({
   library(dplyr)
   library(ggplot2)
   library(R.utils)
+  library(Biostrings)
 })
 
 
@@ -58,7 +59,7 @@ filterVCF <- function(vcf,file_prefix,DP_lower,DP_upper,sample_names) {
   write_tsv(snps_filtered,paste0(file_prefix, "_filtered_SNPs.tsv"))
   write_tsv(snps_filtered_homo,paste0(file_prefix, "_filtered_homozygous_SNPs.tsv"))
   
-  return(snps) 
+  return(snps_filtered_homo) 
 }
 
 #' # Load VCF 
@@ -83,7 +84,7 @@ data <- read.table("out.lqual", header = TRUE)
 ggplot(subset(data, QUAL < 1000), aes(x = QUAL)) + geom_histogram(fill = "white",
                                                                   color = "black", bins = 50) + xlab("Quality value") + ylab("Count") + geom_vline(xintercept = 30,
                                                                                                                                                    color = "red", size = 1.3) + ggtitle("Example threshold: Q30")
-filterVCF(vcf,"results/gDNA_line26",round(lower,0),round(upper,0),c("gDNA_line3", "gDNA_line26"))
+snps_line26 <- filterVCF(vcf,"results/gDNA_line26",round(lower,0),round(upper,0),c("gDNA_line3", "gDNA_line26"))
 
 
 #' # Load VCF 
@@ -108,4 +109,32 @@ data <- read.table("out.lqual", header = TRUE)
 ggplot(subset(data, QUAL < 1000), aes(x = QUAL)) + geom_histogram(fill = "white",
                                                                   color = "black", bins = 50) + xlab("Quality value") + ylab("Count") + geom_vline(xintercept = 30,
                                                                                                                                                    color = "red", size = 1.3) + ggtitle("Example threshold: Q30")
-filterVCF(vcf,"results/gDNA_line3",round(lower,0),round(upper,0),c("gDNA_line3", "gDNA_line26"))
+snps_line3 <- filterVCF(vcf,"results/gDNA_line3",round(lower,0),round(upper,0),c("gDNA_line3", "gDNA_line26"))
+
+expand_sequences <- function(chrom, position, ref_genome, window_size = 50) {
+  seq_start <- max(1, position - window_size)
+  seq_end <- min(length(ref_genome[[chrom]]), position + window_size)
+  #seq <- subseq(sub(" .*", "", ref_genome[[chrom]]), start = seq_start, end = seq_end)
+  return(cbind(seq_start,seq_end))
+}
+
+variants_line26 <- tibble(chrom=snps_line26$`#CHROM`, pos=snps_line26$POS)
+
+ref_genome <- readDNAStringSet("reference/fasta/Potra02_genome_hardmasked.fasta")
+ref_genome@ranges@NAMES <- sub("\\s.*", "", ref_genome@ranges@NAMES)
+# Expand sequences around SNPs
+expanded_sequences_line26 <- variants_line26 %>%
+  rowwise() %>%
+  mutate(expanded_sequences = expand_sequences(chrom, pos, ref_genome))
+
+bed_sequences_line26 <- tibble(expanded_sequences_line26) %>% 
+  mutate(start=expanded_sequences[,1], end=expanded_sequences[,2]) %>% 
+  dplyr::select(chrom, start, end)
+
+write_tsv(bed_sequences_line26, "results/bed_snps_indels_line26.bed")
+# View the result
+print(expanded_sequences)
+
+expanded_sequences_line3 <- variants_line3 %>%
+  rowwise() %>%
+  mutate(expanded_sequence = expand_sequences(chrom, pos, ref_genome))

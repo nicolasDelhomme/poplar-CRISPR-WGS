@@ -5,12 +5,11 @@ set -eu
 # define variables
 proj=u2023008
 email=kristina.benevides@umu.se
-in=$(realpath ../data/WGS)
-out=/mnt/ada/projects/aspseq/mschmid/poplar-CRISPR-WGS/bwa/v1.1
+in=$(realpath ../data/WGS/raw/files)
+out=/mnt/ada/projects/aspseq/mschmid/poplar-CRISPR-WGS/bwa/T89
 bwa_sif=$(realpath ../singularity/kogia/bwa_0.7.17.sif)
 samtools_sif=$(realpath ../singularity/kogia/samtools_1.16.sif)
-#index=$(realpath ../reference/indices/bwa/Potra02_genome_hardmasked.fasta.gz)
-index=/mnt/picea/storage/reference/Populus-tremula/v1.1/indices/bwa/Potra01-genome.fa
+index=/mnt/picea/storage/reference/Populus-tremula_X_Populus-tremuloides/v2.0/indices/bwa/primary-plus-alternative-haplotypes.fasta.gz
 
 if [ ! -d $out ]; then
   mkdir -p $out
