@@ -1,4 +1,33 @@
+#' ---
+#' title: "Poplar CRISPR lines WGS off-target analysis"
+#' author: "Kristina Benevides & Fai Theerarat Kochakarn"
+#' date: "`r Sys.Date()`"
+#' output:
+#'  html_document:
+#'    fig_width: 9
+#'    fig_height: 6
+#'    toc: true
+#'    number_sections: true
+#'    toc_depth: 4
+#'    toc_float:
+#'      collapsed: TRUE
+#'      smooth_scroll: TRUE
+#'    code_folding: hide
+#'    theme: "flatly"
+#'    highlight: pygments
+#'    includes:
+#'      before_body: header.html
+#'      after_body: footer.html
+#'    css: style.css
+#' ---
+#' 
+#' <hr />
+#' &nbsp;
+#' 
 
+#' # Setup
+
+#' * Libraries
 suppressPackageStartupMessages({
   library(data.table)
   library(splitstackshape)
@@ -12,6 +41,25 @@ suppressPackageStartupMessages({
 })
 
 
+#' * Helper functions
+#' 
+#' Basic filtering
+QC_filtering <- function(data) {
+  x <- as.data.frame(table(data$SUM_DEPTH))
+  lower <- 0.75 * median(data$SUM_DEPTH)
+  upper <- median(data$SUM_DEPTH) + 1 * sd(data$SUM_DEPTH)
+  xupper <- ceiling(upper/100) * 100
+  ggplot(x, aes(x = as.numeric(as.character(Var1)), y = Freq)) + geom_line() + xlab("Depth") +
+    ylab("bp") + xlim(0, xupper) + geom_vline(xintercept = lower, color = "red",
+                                              linewidth = 1.3) + geom_vline(xintercept = upper, color = "red", linewidth = 1.3) + ggtitle("Example threshold: 0.8X median depth, median depth + 2sd")
+  #' ## Variant quality distribution
+  system(paste("srun -A u2023008 apptainer exec -B /mnt:/mnt /mnt/picea/storage/singularity/vcftools_v0.1.16.sif vcftools --gzvcf", vcf,"--site-quality 2>/dev/null"))
+  data <- read.table("out.lqual", header = TRUE)
+  ggplot(subset(data, QUAL < 1000), aes(x = QUAL)) + geom_histogram(fill = "white",
+                                                                    color = "black", bins = 50) + xlab("Quality value") + ylab("Count") + geom_vline(xintercept = 30,                                                                                                                                                     color = "red", size = 1.3) + ggtitle("Example threshold: Q30")
+}
+
+#' Extract DP (sequencing depth) from VCF
 extract_DP <- function(column) {
   dp_entries <- str_extract_all(column, "DP=\\d+")
   return(ifelse(dp_entries != "character(0)", dp_entries, ""))
@@ -62,79 +110,144 @@ filterVCF <- function(vcf,file_prefix,DP_lower,DP_upper,sample_names) {
   return(snps_filtered_homo) 
 }
 
-#' # Load VCF 
-vcf <- "data/WGS/gatk/gDNA_line26_EKDN230011267-1A_HVCGCDSX5_HYCW3DSX5_L3_L4_merged.sorted_mkdup.snps.indels.vcf.gz"
-system(paste("srun -A u2023008 apptainer exec -B /mnt:/mnt /mnt/picea/storage/singularity/vcftools_v0.1.16.sif vcftools --gzvcf", vcf,"--site-depth 2>/dev/null"))
-data <- read.table("out.ldepth", header = TRUE)
-
-#' # Basic variant filtering 
-#' 
-#' ## Mean read depth - decide on DP threshold
-x <- as.data.frame(table(data$SUM_DEPTH))
-lower <- 0.75 * median(data$SUM_DEPTH)
-upper <- median(data$SUM_DEPTH) + 1 * sd(data$SUM_DEPTH)
-xupper <- ceiling(upper/100) * 100
-ggplot(x, aes(x = as.numeric(as.character(Var1)), y = Freq)) + geom_line() + xlab("Depth") +
-  ylab("bp") + xlim(0, xupper) + geom_vline(xintercept = lower, color = "red",
-                                            linewidth = 1.3) + geom_vline(xintercept = upper, color = "red", linewidth = 1.3) + ggtitle("Example threshold: 0.8X median depth, median depth + 2sd")
-
-#' ## Variant quality distribution
-system(paste("srun -A u2023008 apptainer exec -B /mnt:/mnt /mnt/picea/storage/singularity/vcftools_v0.1.16.sif vcftools --gzvcf", vcf,"--site-quality 2>/dev/null"))
-data <- read.table("out.lqual", header = TRUE)
-ggplot(subset(data, QUAL < 1000), aes(x = QUAL)) + geom_histogram(fill = "white",
-                                                                  color = "black", bins = 50) + xlab("Quality value") + ylab("Count") + geom_vline(xintercept = 30,
-                                                                                                                                                   color = "red", size = 1.3) + ggtitle("Example threshold: Q30")
-snps_line26 <- filterVCF(vcf,"results/gDNA_line26",round(lower,0),round(upper,0),c("gDNA_line3", "gDNA_line26"))
-
-
-#' # Load VCF 
-vcf <- "data/WGS/gatk/gDNA_line3_EKDN230011266-1A_HVGLKDSX5_L1.sorted_mkdup.filtered.snps.indels.vcf.gz"
-system(paste("srun -A u2023008 apptainer exec -B /mnt:/mnt /mnt/picea/storage/singularity/vcftools_v0.1.16.sif vcftools --gzvcf", vcf,"--site-depth 2>/dev/null"))
-data <- read.table("out.ldepth", header = TRUE)
-
-#' # Basic variant filtering 
-#' 
-#' ## Mean read depth - decide on DP threshold
-x <- as.data.frame(table(data$SUM_DEPTH))
-lower <- 0.75 * median(data$SUM_DEPTH)
-upper <- median(data$SUM_DEPTH) + 1 * sd(data$SUM_DEPTH)
-xupper <- ceiling(upper/100) * 100
-ggplot(x, aes(x = as.numeric(as.character(Var1)), y = Freq)) + geom_line() + xlab("Depth") +
-  ylab("bp") + xlim(0, xupper) + geom_vline(xintercept = lower, color = "red",
-                                            linewidth = 1.3) + geom_vline(xintercept = upper, color = "red", linewidth = 1.3) + ggtitle("Example threshold: 0.8X median depth, median depth + 2sd")
-
-#' ## Variant quality distribution
-system(paste("srun -A u2023008 apptainer exec -B /mnt:/mnt /mnt/picea/storage/singularity/vcftools_v0.1.16.sif vcftools --gzvcf", vcf,"--site-quality 2>/dev/null"))
-data <- read.table("out.lqual", header = TRUE)
-ggplot(subset(data, QUAL < 1000), aes(x = QUAL)) + geom_histogram(fill = "white",
-                                                                  color = "black", bins = 50) + xlab("Quality value") + ylab("Count") + geom_vline(xintercept = 30,
-                                                                                                                                                   color = "red", size = 1.3) + ggtitle("Example threshold: Q30")
-snps_line3 <- filterVCF(vcf,"results/gDNA_line3",round(lower,0),round(upper,0),c("gDNA_line3", "gDNA_line26"))
-
+#' Function to extract +/- 50bp of the SNPs/Indels
 expand_sequences <- function(chrom, position, ref_genome, window_size = 50) {
   seq_start <- max(1, position - window_size)
   seq_end <- min(length(ref_genome[[chrom]]), position + window_size)
-  #seq <- subseq(sub(" .*", "", ref_genome[[chrom]]), start = seq_start, end = seq_end)
   return(cbind(seq_start,seq_end))
 }
 
+#' ## Data QC and filtering 
+
+#' Load the T89 reference genome
+ref_genome <- readDNAStringSet("reference/v2.0/fasta/primary-plus-alternative-haplotypes.fasta.gz")
+ref_genome@ranges@NAMES <- sub("\\s.*", "", ref_genome@ranges@NAMES)
+
+#' ### Line 3
+
+#' Load VCF 
+vcf <- "data/WGS/gatk/T89/gDNA_line3_EKDN230011266-1A_HVGLKDSX5_L1.sorted_mkdup.filtered.snps.indels.vcf.gz"
+system(paste("srun -A u2023008 apptainer exec -B /mnt:/mnt /mnt/picea/storage/singularity/vcftools_v0.1.16.sif vcftools --gzvcf", vcf,"--site-depth 2>/dev/null"))
+data <- read.table("out.ldepth", header = TRUE)
+
+#' Basic variant filtering 
+QC_filtering(data)
+
+#' Filter for high-quality SNPs/Indels
+snps_line3 <- filterVCF(vcf,"results/gDNA_line3",round(lower,0),round(upper,0),c("gDNA_line3", "gDNA_line26"))
+
+#' Extract chrom and position to a tibble
+variants_line3 <- tibble(chrom=snps_line3$`#CHROM`, pos=snps_line3$POS)
+
+#' Expand +/- 50bp around the SNPs/Indels
+expanded_sequences_line3 <- variants_line3 %>%
+  rowwise() %>%
+  mutate(expanded_sequences = expand_sequences(chrom, pos, ref_genome))
+
+#' View the result
+print(expanded_sequences_line3)
+
+#' Retrieve just the start and stop position as a bed file for bedtools
+bed_sequences_line3 <- tibble(expanded_sequences_line3) %>% 
+  mutate(start=expanded_sequences[,1], end=expanded_sequences[,2]) %>% 
+  dplyr::select(chrom, start, end)
+
+#' Write to file
+write_tsv(bed_sequences_line3, "results/snps_indels_line3.bed")
+
+#' ### Line 26
+#' Load VCF 
+vcf <- "data/WGS/gatk/T89/gDNA_line26_EKDN230011267-1A_HVCGCDSX5_HYCW3DSX5_L3_L4_merged.sorted_mkdup.filtered.snps.indels.vcf.gz"
+system(paste("srun -A u2023008 apptainer exec -B /mnt:/mnt /mnt/picea/storage/singularity/vcftools_v0.1.16.sif vcftools --gzvcf", vcf,"--site-depth 2>/dev/null"))
+data <- read.table("out.ldepth", header = TRUE)
+
+#' Basic variant filtering 
+QC_filtering(data)
+
+#' Filter for high-quality SNPs/Indels
+snps_line26 <- filterVCF(vcf,"results/gDNA_line26",round(lower,0),round(upper,0),c("gDNA_line3", "gDNA_line26"))
+
+#' Extract chrom and position to a tibble
 variants_line26 <- tibble(chrom=snps_line26$`#CHROM`, pos=snps_line26$POS)
 
-ref_genome <- readDNAStringSet("reference/fasta/Potra02_genome_hardmasked.fasta")
-ref_genome@ranges@NAMES <- sub("\\s.*", "", ref_genome@ranges@NAMES)
-# Expand sequences around SNPs
+#' Expand +/- 50bp around the SNPs/Indels
 expanded_sequences_line26 <- variants_line26 %>%
   rowwise() %>%
   mutate(expanded_sequences = expand_sequences(chrom, pos, ref_genome))
 
+#' View the result
+print(expanded_sequences_line26)
+
+#' Retrieve just the start and stop position as a bed file for bedtools
 bed_sequences_line26 <- tibble(expanded_sequences_line26) %>% 
   mutate(start=expanded_sequences[,1], end=expanded_sequences[,2]) %>% 
   dplyr::select(chrom, start, end)
 
-write_tsv(bed_sequences_line26, "results/bed_snps_indels_line26.bed")
-# View the result
-print(expanded_sequences)
+#' Write to file
+write_tsv(bed_sequences_line26, "results/snps_indels_line26.bed")
 
-expanded_sequences_line3 <- variants_line3 %>%
+#' ### Using Potra v2.2 as reference
+
+ref_genome <- readDNAStringSet("reference/fasta/Potra02_genome_hardmasked.fasta.gz")
+
+#' #### Line 3
+
+#' Load VCF 
+vcf_potra <- "data/WGS/gatk/gDNA_line3_EKDN230011266-1A_HVGLKDSX5_L1.sorted_mkdup.filtered.snps.indels.vcf.gz"
+system(paste("srun -A u2023008 apptainer exec -B /mnt:/mnt /mnt/picea/storage/singularity/vcftools_v0.1.16.sif vcftools --gzvcf", vcf,"--site-depth 2>/dev/null"))
+data_potra <- read.table("out.ldepth", header = TRUE)
+
+#' Basic variant filtering 
+QC_filtering(data_potra)
+#' Filter for high-quality SNPs/Indels
+snps_line3_potra <- filterVCF(vcf_potra,"results/gDNA_line3",round(lower,0),round(upper,0),c("gDNA_line3", "gDNA_line26"))
+
+#' Extract chrom and position to a tibble
+variants_line3_potra <- tibble(chrom=snps_line3_potra$`#CHROM`, pos=snps_line3_potra$POS)
+
+#' Expand +/- 50bp around the SNPs/Indels
+expanded_sequences_line3_potra <- variants_line3_potra %>%
   rowwise() %>%
-  mutate(expanded_sequence = expand_sequences(chrom, pos, ref_genome))
+  mutate(expanded_sequences = expand_sequences(chrom, pos, ref_genome))
+
+#' View the result
+print(expanded_sequences_line3_potra)
+
+#' Retrieve just the start and stop position as a bed file for bedtools
+bed_sequences_line3_potra <- tibble(expanded_sequences_line3_potra) %>% 
+  mutate(start=expanded_sequences[,1], end=expanded_sequences[,2]) %>% 
+  dplyr::select(chrom, start, end)
+
+#' Write to file
+write_tsv(bed_sequences_line3_potra, "results/snps_indels_line3_Potra02.bed")
+
+#' #### Line 26
+
+#' Load VCF 
+vcf_potra <- "data/WGS/gatk/gDNA_line3_EKDN230011266-1A_HVGLKDSX5_L1.sorted_mkdup.filtered.snps.indels.vcf.gz"
+system(paste("srun -A u2023008 apptainer exec -B /mnt:/mnt /mnt/picea/storage/singularity/vcftools_v0.1.16.sif vcftools --gzvcf", vcf,"--site-depth 2>/dev/null"))
+data_potra <- read.table("out.ldepth", header = TRUE)
+
+#' Basic variant filtering 
+QC_filtering(data_potra)
+#' Filter for high-quality SNPs/Indels
+snps_line26_potra <- filterVCF(vcf_potra,"results/gDNA_line26",round(lower,0),round(upper,0),c("gDNA_line3", "gDNA_line26"))
+
+#' Extract chrom and position to a tibble
+variants_line26_potra <- tibble(chrom=snps_line26_potra$`#CHROM`, pos=snps_line26_potra$POS)
+
+#' Expand +/- 50bp around the SNPs/Indels
+expanded_sequences_line26_potra <- variants_line26_potra %>%
+  rowwise() %>%
+  mutate(expanded_sequences = expand_sequences(chrom, pos, ref_genome))
+
+#' View the result
+print(expanded_sequences_line26_potra)
+
+#' Retrieve just the start and stop position as a bed file for bedtools
+bed_sequences_line26_potra <- tibble(expanded_sequences_line26_potra) %>% 
+  mutate(start=expanded_sequences[,1], end=expanded_sequences[,2]) %>% 
+  dplyr::select(chrom, start, end)
+
+#' Write to file
+write_tsv(bed_sequences_line26_potra, "results/snps_indels_line26_Potra02.bed")
