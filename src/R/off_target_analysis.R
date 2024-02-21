@@ -36,6 +36,7 @@ suppressPackageStartupMessages({
   library(RColorBrewer)
   library(dplyr)
   library(ggplot2)
+  library(gridExtra)
   library(R.utils)
   library(Biostrings)
 })
@@ -44,19 +45,26 @@ suppressPackageStartupMessages({
 #' * Helper functions
 #' 
 #' Basic filtering
-QC_filtering <- function(data) {
-  x <- as.data.frame(table(data$SUM_DEPTH))
-  lower <- 0.75 * median(data$SUM_DEPTH)
-  upper <- median(data$SUM_DEPTH) + 1 * sd(data$SUM_DEPTH)
+QC_filtering <- function(data_depth, data_qual) {
+  x <- as.data.frame(table(data_depth$SUM_DEPTH))
+  lower <- 0.75 * median(data_depth$SUM_DEPTH)
+  upper <- median(data_depth$SUM_DEPTH) + 1 * sd(data_depth$SUM_DEPTH)
   xupper <- ceiling(upper/100) * 100
-  ggplot(x, aes(x = as.numeric(as.character(Var1)), y = Freq)) + geom_line() + xlab("Depth") +
+  g1 <- ggplot(x, aes(x = as.numeric(as.character(Var1)), y = Freq)) + geom_line() + xlab("Depth") +
     ylab("bp") + xlim(0, xupper) + geom_vline(xintercept = lower, color = "red",
-                                              linewidth = 1.3) + geom_vline(xintercept = upper, color = "red", linewidth = 1.3) + ggtitle("Example threshold: 0.8X median depth, median depth + 2sd")
+                                              linewidth = 1.3) + geom_vline(xintercept = upper, color = "red", linewidth = 1.3) + ggtitle("Example threshold: 0.8X median depth, median depth + 2sd") %>% suppressMessages()
   #' ## Variant quality distribution
-  system(paste("srun -A u2023008 apptainer exec -B /mnt:/mnt /mnt/picea/storage/singularity/vcftools_v0.1.16.sif vcftools --gzvcf", vcf,"--site-quality 2>/dev/null"))
-  data <- read.table("out.lqual", header = TRUE)
-  ggplot(subset(data, QUAL < 1000), aes(x = QUAL)) + geom_histogram(fill = "white",
-                                                                    color = "black", bins = 50) + xlab("Quality value") + ylab("Count") + geom_vline(xintercept = 30,                                                                                                                                                     color = "red", size = 1.3) + ggtitle("Example threshold: Q30")
+
+  g2 <- ggplot(subset(data_qual, QUAL < 1000), aes(x = QUAL)) + geom_histogram(fill = "white",
+                                                                    color = "black", bins = 50) + xlab("Quality value") + ylab("Count") + geom_vline(xintercept = 30,                                                                                                                                                     
+                                                                    color = "red", linewidth = 1.3) + ggtitle("Example threshold: Q30") %>% suppressMessages()
+  
+  # Combine both plots into a single figure
+  combined_plot <- grid.arrange(g1, g2, ncol = 2) %>% suppressMessages()
+  
+  print(paste("Lower DP:", lower," ","Upper DP:", upper))
+  # Return the combined plot
+  return(combined_plot)
 }
 
 #' Extract DP (sequencing depth) from VCF
@@ -128,10 +136,12 @@ ref_genome@ranges@NAMES <- sub("\\s.*", "", ref_genome@ranges@NAMES)
 #' Load VCF 
 vcf <- "data/WGS/gatk/T89/gDNA_line3_EKDN230011266-1A_HVGLKDSX5_L1.sorted_mkdup.filtered.snps.indels.vcf.gz"
 system(paste("srun -A u2023008 apptainer exec -B /mnt:/mnt /mnt/picea/storage/singularity/vcftools_v0.1.16.sif vcftools --gzvcf", vcf,"--site-depth 2>/dev/null"))
-data <- read.table("out.ldepth", header = TRUE)
+data_depth <- read.table("out.ldepth", header = TRUE)
+system(paste("srun -A u2023008 apptainer exec -B /mnt:/mnt /mnt/picea/storage/singularity/vcftools_v0.1.16.sif vcftools --gzvcf", vcf,"--site-qual 2>/dev/null"))
+data_qual <- read.table("out.lqual", header = TRUE)
 
 #' Basic variant filtering 
-QC_filtering(data)
+QC_filtering(data_depth,data_qual)
 
 #' Filter for high-quality SNPs/Indels
 snps_line3 <- filterVCF(vcf,"results/gDNA_line3",round(lower,0),round(upper,0),c("gDNA_line3", "gDNA_line26"))
@@ -159,10 +169,12 @@ write_tsv(bed_sequences_line3, "results/snps_indels_line3.bed")
 #' Load VCF 
 vcf <- "data/WGS/gatk/T89/gDNA_line26_EKDN230011267-1A_HVCGCDSX5_HYCW3DSX5_L3_L4_merged.sorted_mkdup.filtered.snps.indels.vcf.gz"
 system(paste("srun -A u2023008 apptainer exec -B /mnt:/mnt /mnt/picea/storage/singularity/vcftools_v0.1.16.sif vcftools --gzvcf", vcf,"--site-depth 2>/dev/null"))
-data <- read.table("out.ldepth", header = TRUE)
+data_depth <- read.table("out.ldepth", header = TRUE)
+system(paste("srun -A u2023008 apptainer exec -B /mnt:/mnt /mnt/picea/storage/singularity/vcftools_v0.1.16.sif vcftools --gzvcf", vcf,"--site-qual 2>/dev/null"))
+data_qual <- read.table("out.lqual", header = TRUE)
 
 #' Basic variant filtering 
-QC_filtering(data)
+QC_filtering(data_depth,data_qual)
 
 #' Filter for high-quality SNPs/Indels
 snps_line26 <- filterVCF(vcf,"results/gDNA_line26",round(lower,0),round(upper,0),c("gDNA_line3", "gDNA_line26"))
@@ -226,10 +238,13 @@ write_tsv(bed_sequences_line3_potra, "results/snps_indels_line3_Potra02.bed")
 #' Load VCF 
 vcf_potra <- "data/WGS/gatk/gDNA_line3_EKDN230011266-1A_HVGLKDSX5_L1.sorted_mkdup.filtered.snps.indels.vcf.gz"
 system(paste("srun -A u2023008 apptainer exec -B /mnt:/mnt /mnt/picea/storage/singularity/vcftools_v0.1.16.sif vcftools --gzvcf", vcf,"--site-depth 2>/dev/null"))
-data_potra <- read.table("out.ldepth", header = TRUE)
+data_potra_depth <- read.table("out.ldepth", header = TRUE)
+
+system(paste("srun -A u2023008 apptainer exec -B /mnt:/mnt /mnt/picea/storage/singularity/vcftools_v0.1.16.sif vcftools --gzvcf", vcf,"--site-qual 2>/dev/null"))
+data_potra_qual <- read.table("out.lqual", header = TRUE)
 
 #' Basic variant filtering 
-QC_filtering(data_potra)
+QC_filtering(data_potra_depth, data_potra_qual)
 #' Filter for high-quality SNPs/Indels
 snps_line26_potra <- filterVCF(vcf_potra,"results/gDNA_line26",round(lower,0),round(upper,0),c("gDNA_line3", "gDNA_line26"))
 
@@ -251,3 +266,18 @@ bed_sequences_line26_potra <- tibble(expanded_sequences_line26_potra) %>%
 
 #' Write to file
 write_tsv(bed_sequences_line26_potra, "results/snps_indels_line26_Potra02.bed")
+
+
+#' ## Second attempt with bcftools
+
+bcf_file <- "data/WGS/bcftoolstest/calls.bcf"
+
+#' ## QC
+calls_bcf_depth <- "data/WGS/bcftoolstest/calls_bcf_depth.txt"
+data_bcf_depth <- read.delim(calls_bcf_depth, header = FALSE, sep = " ", col.names = c("CHROM", "POS", "SUM_DEPTH", "SUMSQ_DEPTH"))
+
+system(paste("srun -A u2023008 apptainer exec -B /mnt:/mnt /mnt/picea/storage/singularity/vcftools_v0.1.16.sif vcftools --bcf", bcf_file,"--site-quality 2>/dev/null"))
+data_bcf_qual <- read.table("out.lqual", header = TRUE)
+
+QC_filtering(data_bcf_depth,data_bcf_qual)
+

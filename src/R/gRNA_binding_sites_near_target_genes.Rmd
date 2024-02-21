@@ -1,7 +1,7 @@
 ---
-title: "Poplar CRISPR lines: guide RNA binding sites near target genes"
+title: "Poplar CRISPR lines: off-target analysis and gRNA binding sites near target genes"
 subtitle: "u2023008"
-author: "Fai Theerarat Kochakarn"
+author: "Fai Theerarat Kochakarn & Kristina Benevides"
 date: "`r Sys.Date()`"
 output:
  html_document:
@@ -24,7 +24,43 @@ output:
 
 # Method
 
-gDNA reads were aligned onto Potra v2.2 and T89 v2.0 by using bwa. Duplicated reads were marked using Picard. Transcript reads were aligned onto Potra v2.2 using STAR. The visualization was done in IGV.
+The genomic DNA reads were aligned onto Potra v2.2 and T89 v2.0 by using BWA-mem (0.7.17) and samtools (1.16). Duplicated reads were marked using Picard (2.27.1) and samtools (1.16). Variant (both SNPs and indels shorter than 50bp) calling and filtering was first done using GATK (4.2.6.1). Subsequently a second snp/indel call was made using bcftools to confirm the results, as the performance of GATK drops dramatically if the reference sequence consists of many short contigs, which is the case with the T89 genome. We used quite relaxed criteria for bcftools (`--min-MQ 10 --min-BQ 20`) and did not apply any quality filtering to be able to call the insertion site for line 26. Having a good-quality haplotype resolved reference genome would be of great use in this case.
+
+The PAM sites were found using Cas-OFFinder (v2.4.1), were we tested allowing for 1, 3 and 5 mismatches between the PAM patterns (5’-NGG-3’/5’-NAG-3’) and the gRNA query sequences. The potential off-target sites reported by Cas-OFFinder were intersected with the SNPs/indels (which were expanded +/- 50bp) using bedtools intersect (2.30.0) to find putative off-targets. 
+
+Sequences for the SM and LSM genes were retrieved from Potra v2.2 and blasted against the T89 v2.0 assembly using NCBI Blast+ (2.13.0). Only hits longer than 1kbp were kept. We investigated if the putative off-targets were close to or overlapping these genes. 
+
+The transcript reads were aligned onto Potra v2.2 using STAR. The visualization was done in IGV.
+
+The assumption made is that a putative off-target is a site likely near a gene which closely matches a gRNA with a PAM immediately adjacent to it, where we observe an insertion or deletion.
+
+Decision tree for off-target classification: 
+
+`Indels/SNPs (Yes) -> Overlap gRNA with a PAM (Yes) -> Is it within / next to a gene (Yes) => putative off-target.`
+
+# Off-target analysis 
+
+In summary, we could not find any off-targets for either line 3 or line 26 when using the above method, as the only sites found were related to the expected target sites. The results remained the same when looking at CRISPR sites with 1, 3 or 5 mismatches. 
+
+## Line 3
+
+The only sites matching this assumption for line 3 is:
+
+* `utg000005l	3986112	3986113	(utg000005l	3986106	3986129	-	Line3_CRISPR_4108_gRNA1)`
+
+* `utg000005l	3997344	3997345	(utg000005l	3997338	3997361	-	Line3_CRISPR_4108_gRNA1)`
+
+These cut sites are around 10-20 kb upstream the target gene for line 3 (Potra2n18c32411). We have a closer look at this the sections below.  
+
+## Line 26
+
+The only sites matching this assumption for line 26 is:
+
+* `utg000014l	8819751	8819752	(utg000014l	8819746	8819769	-	Line26_CRISPR_4110_gRNA1)`
+
+* `utg000014l	8819752	8819753	(utg000014l	8819746	8819769	-	Line26_CRISPR_4110_gRNA1)`
+
+These cut sites are within the target gene for line 26 (Potra2n6c13821). We have a closer look at this in the sections below.  
 
 # Regions matched to guide RNA using Potra v2.2 as reference
 
@@ -190,9 +226,14 @@ Here we plot only on alternative haplotype (utg000037l-alternative-haplotype) be
 
 ![ ](../../analysis/IGV/alt_L26_gRNA2.png)
 
+
 ## Summary from the alignment using T89 as reference
 
 * The result still suggests sample swap between line 26 and line 3 genomic DNA.
+
+* We found no putative off-targets for line 3 and we could confirm a CRISPR-Cas editing event in the vicinity of the target gene Potra2n18c32411.
+
+* We found no putative off-targets for line 26 and by using a very relaxed method we could confirm a CRISPR-Cas editing for its target gene Potra2n6c13821. 
 
 * Guide RNA 1 targeting line 3 results in single base insertion and likely splice donor shift. The exact location of this editing is still ambiguous because of the present of target gene fragments in T89 genome.
 
