@@ -1,6 +1,6 @@
 #!/bin/bash -l
 
-#SBATCH -t 2-00:00:00
+#SBATCH -t 4-00:00:00
 #SBATCH -p core
 #SBATCH -n 8
 #SBATCH --mem 64G
@@ -56,27 +56,29 @@ plots_out=`basename "${inbam/.bam/.pdf}"`
 gvcf_out=`basename "${inbam/.bam/.vcf.gz}"`
 vcf_out=`basename "${inbam/.bam/.snps.indels.vcf.gz}"`
 filt_vcf_out="${inbam/.bam/.filtered.snps.indels.vcf.gz}"
+
 # Run BaseRecalibrator
-## Analyze patterns of covariation in the sequence dataset
-#singularity exec $sif gatk BaseRecalibrator -R $ref --known-sites $db -I $inbam -O $outdir/$name_out
+# Analyze patterns of covariation in the sequence dataset
+singularity exec $sif gatk BaseRecalibrator -R $ref --known-sites $db -I $inbam -O $outdir/$name_out
 
-## Apply the recalibration to your sequence data
-#singularity exec $sif gatk ApplyBQSR -R $ref -I $inbam --bqsr-recal-file $outdir/$name_out -O $outdir/$outname
+# Apply the recalibration to your sequence data
+singularity exec $sif gatk ApplyBQSR -R $ref -I $inbam --bqsr-recal-file $outdir/$name_out -O $outdir/$outname
 
-## Do a second pass to analyze covariation remaining after recalibration
-#singularity exec $sif gatk BaseRecalibrator -R $ref --known-sites $db -I $outdir/$outname -O $outdir/$post_out
+# Do a second pass to analyze covariation remaining after recalibration
+singularity exec $sif gatk BaseRecalibrator -R $ref --known-sites $db -I $outdir/$outname -O $outdir/$post_out
 
-## Generate before/after plots
-#singularity exec $sif gatk AnalyzeCovariates -before $outdir/$name_out -after $outdir/$post_out -plots $outdir/$plots_out
+# Generate before/after plots
+singularity exec $sif gatk AnalyzeCovariates -before $outdir/$name_out -after $outdir/$post_out -plots $outdir/$plots_out
 
 # Run HaplotypeCaller
-#singularity exec $sif gatk --java-options "-Xmx40G -Djava.io.tmpdir=/mnt/picea/tmp" HaplotypeCaller \
-#-I $outdir/$outname -O $outdir/$vcf_out -R $ref --annotation FisherStrand --annotation QualByDepth --annotation MappingQuality \
-#  --annotation-group StandardAnnotation --create-output-variant-index true
+singularity exec $sif gatk --java-options "-Xmx40G -Djava.io.tmpdir=/mnt/picea/tmp" HaplotypeCaller \
+-I $outdir/$outname -O $outdir/$vcf_out -R $ref --annotation FisherStrand --annotation QualByDepth --annotation MappingQuality \
+  --annotation-group StandardAnnotation --create-output-variant-index true
 
- singularity exec $sif gatk --java-options "-Xmx40G -Djava.io.tmpdir=/mnt/picea/tmp" VariantFiltration -OVI true \
+# Run VariantFiltration
+singularity exec $sif gatk --java-options "-Xmx40G -Djava.io.tmpdir=/mnt/picea/tmp" VariantFiltration -OVI true \
   --variant $outdir/$vcf_out \
   --output $filt_vcf_out \
-     --filter-name FisherStrand --filter 'FS > 60.0' \
+  --filter-name FisherStrand --filter 'FS > 60.0' \
   --filter-name QualByDepth --filter 'QD < 2.0' \
   --filter-name MappingQuality --filter 'MQ < 40.0'

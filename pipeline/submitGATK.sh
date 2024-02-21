@@ -7,9 +7,9 @@ set -eu
 # define variables
 proj=u2023008
 email=kristina.benevides@umu.se
-in=/mnt/ada/projects/aspseq/mschmid/poplar-CRISPR-WGS/WGS/picard/v2.2
-out=/mnt/ada/projects/aspseq/mschmid/poplar-CRISPR-WGS/WGS/gatk
-ref=$(realpath ../reference/fasta/Potra02_genome_hardmasked.fasta)
+in=/mnt/ada/projects/aspseq/mschmid/poplar-CRISPR-WGS/WGS/picard/T89
+out=/mnt/ada/projects/aspseq/mschmid/poplar-CRISPR-WGS/WGS/gatk/T89
+ref=$(realpath ../reference/v2.0/fasta/primary-plus-alternative-haplotypes.fasta.gz)
 gatk_sif=$(realpath ../singularity/gatk_4.2.6.1.sif)
 dbsnp_dir=/mnt/ada/projects/aspseq/mschmid/poplar-CRISPR-WGS/WGS/gatk/known_sites
 

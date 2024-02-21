@@ -7,10 +7,10 @@ set -ex
 account=u2023008
 mail="kristina.benevides@umu.se"
 sif=$(realpath ../singularity/ncbi-blast_2.13.0.sif)
-in=/mnt/picea/home/kbenevides/Git/poplar-CRISPR-WGS/doc/gRNAs.fa
+in=$(realpath ../results/SM_LSM_genes.fasta)
 out=/mnt/ada/projects/aspseq/mschmid/poplar-CRISPR-WGS/WGS/blast
-#inx=/mnt/ada/projects/aspseq/sjansson/T89_BLAST/blast_db/primary-plus-alternative-haplotypes.fasta.gz
-inx=/mnt/picea/storage/reference/Populus-tremula/v2.2/indices/BLAST+/Potra02_genome.fasta
+inx=/mnt/ada/projects/aspseq/sjansson/T89_BLAST/blast_db/primary-plus-alternative-haplotypes.fasta.gz
+#inx=/mnt/picea/storage/reference/Populus-tremula/v2.2/indices/BLAST+/Potra02_genome.fasta
 ## create the out dir
 if [ ! -d $out ]; then
     mkdir -p $out
