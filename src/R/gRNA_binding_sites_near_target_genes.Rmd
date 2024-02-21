@@ -24,13 +24,13 @@ output:
 
 # Method
 
-The genomic DNA reads were aligned onto Potra v2.2 and T89 v2.0 by using BWA-mem (0.7.17) and samtools (1.16). Duplicated reads were marked using Picard (2.27.1) and samtools (1.16). Variant (both SNPs and indels shorter than 50bp) calling and filtering was first done using GATK (4.2.6.1). Subsequently a second snp/indel call was made using bcftools to confirm the results, as the performance of GATK drops dramatically if the reference sequence consists of many short contigs, which is the case with the T89 genome. We used quite relaxed criteria for bcftools (`--min-MQ 10 --min-BQ 20`) and did not apply any quality filtering to be able to call the insertion site for line 26. Having a good-quality haplotype resolved reference genome would be of great use in this case.
+The genomic DNA reads were aligned onto Potra v2.2 and T89 v2.0 by using BWA-mem (0.7.17) and samtools (1.16). Duplicated reads were marked using Picard (2.27.1) and samtools (1.16). Variant (both SNPs and indels shorter than 50bp) calling and filtering was first done using GATK (4.2.6.1). Subsequently a second snp/indel call was made using bcftools (1.16) to confirm the results, as the performance of GATK drops dramatically if the reference sequence consists of many short contigs, which is the case with the T89 genome. We used quite relaxed criteria for bcftools (`--min-MQ 10 --min-BQ 20`) and did not apply any quality filtering to be able to call the insertion site for line 26. Having a good-quality haplotype resolved reference genome would be of great use in this case.
 
-The PAM sites were found using Cas-OFFinder (v2.4.1), were we tested allowing for 1, 3 and 5 mismatches between the PAM patterns (5’-NGG-3’/5’-NAG-3’) and the gRNA query sequences. The potential off-target sites reported by Cas-OFFinder were intersected with the SNPs/indels (which were expanded +/- 50bp) using bedtools intersect (2.30.0) to find putative off-targets. 
+We searched for CRISPR sites using the gRNA sequences with PAMs for SpCas9  (5’-NGG-3’/5’-NAG-3’) using Cas-OFFinder (v2.4.1). We tested allowing for 1, 3 and 5 mismatches with the gRNA query sequences. The potential off-target sites reported by Cas-OFFinder were intersected with the SNPs/indels using bedtools intersect (2.30.0) to find putative off-targets.
 
 Sequences for the SM and LSM genes were retrieved from Potra v2.2 and blasted against the T89 v2.0 assembly using NCBI Blast+ (2.13.0). Only hits longer than 1kbp were kept. We investigated if the putative off-targets were close to or overlapping these genes. 
 
-The transcript reads were aligned onto Potra v2.2 using STAR. The visualization was done in IGV.
+The transcript reads were aligned onto Potra v2.2 using STAR (2.7.10a). The visualization was done in IGV.
 
 The assumption made is that a putative off-target is a site likely near a gene which closely matches a gRNA with a PAM immediately adjacent to it, where we observe an insertion or deletion.
 
