@@ -25,10 +25,3 @@ for prefix in "${prefixes[@]}"; do
          runMergeBams.sh $samtools_sif $input_files $out
 done
 
-# run
-#for BAM in $(find $in -name "*.bam$"); do
-
-#sbatch -A $proj --mail-user $email -J $(basename ${BAM/.sorted.bam/}) \
-#	runMergeBams.sh $samtools_sif \
-#	$BAM $out
-#done

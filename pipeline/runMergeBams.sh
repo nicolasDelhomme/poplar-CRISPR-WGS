@@ -36,14 +36,9 @@ shift `expr $OPTIND - 1`
 # tests
 [[ ! -f $1 ]] && abort "The first argument needs to be the samtools singularity container"
 
-#[[ "${#2[@]}" -lt 2 ]] && abort "The second argument must be an array of at least two .bam files to merge"
-
-#[[ ! -d $3 ]] && abort "The third argument needs to be the output directory"
-
 [[ ${SINGULARITY_BINDPATH:-1} -eq 1 ]] && abort "This function relies on singularity, set the SINGULARITY_BINDPATH environment variable"
 
 # run
-#fnam=$2/$(basename ${2/.bam/.merged.bam})
 fnam=$(basename ${2/.bam/.merged.bam})
 
 singularity exec $1 samtools merge --threads 4 -o ${!#}/$fnam $2
