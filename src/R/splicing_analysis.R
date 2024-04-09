@@ -3,6 +3,7 @@ library(GenomicFeatures)
 library(readxl)
 library(tidyverse)
 
+
 #' GFF preprocessing
 gtfFileName <- "reference/gff/Potra02_genes.gff"
 genomeTxDb <- makeTxDbFromGFF( gtfFileName )
@@ -31,43 +32,41 @@ asd <- jCounts(counts=gbcounts, features=features, minReadLength=100)
 
 asd
 
-#' Differential gene expression
+#' Differential splicing expression
 gb_line3 <- gbDUreport(gbcounts, contrast = c(1,0,-1))
 gb_line26 <- gbDUreport(gbcounts, contrast = c(0,1,-1))
-gb_t89 <- gbDUreport(gbcounts, contrast = c(0,0,-1))
 
 #' Differential junction usage analysis
 jdur_line3 <- jDUreport(asd, contrast=c(1,0,-1))
 jdur_line26 <- jDUreport(asd, contrast=c(0,1,-1))
-jdur_t89 <- jDUreport(asd, contrast=c(0,0,-1))
 
 #' Bin and junction signal integration
 sr_line3 <- splicingReport(gb_line3, jdur_line3, counts=gbcounts)
 sr_line26 <- splicingReport(gb_line26, jdur_line26, counts=gbcounts)
-sr_t89 <- splicingReport(gb_t89, jdur_t89, counts=gbcounts)
+sr <- splicingReport(gb_t89, jdur_t89, counts=gbcounts)
 
 #' Summary of integration of splicing signals along genomic-regions
 is_line3 <- integrateSignals(sr_line3,asd)
 is_line26 <- integrateSignals(sr_line26,asd)
-is_t89 <- integrateSignals(sr_t89,asd)
 
 #' Export results
 exportIntegratedSignals(is_line3,sr=sr_line3,
-                        output.dir = "Line3_AS",
+                        output.dir = "Line3_AS_stranded",
                         counts=gbcounts,features=features,asd=asd,
                         mergedBams = mBAMs)
 
 exportIntegratedSignals(is_line26,sr=sr_line26,
-                        output.dir = "Line26_AS",
+                        output.dir = "Line26_AS_stranded",
                         counts=gbcounts,features=features,asd=asd,
                         mergedBams = mBAMs)
 
 
+#' T89
 
 #' # Line 3
 #' 
 #' #' Read in Excel
-as_line3 <- read_excel("doc/line3 - control.xlsx")
+as_line3 <- read_excel("doc/line3_control_stranded.xlsx")
 #' Get the frequency per splicing event
 events_line3 <- as.data.frame(table(as_line3$Event))
 #' Remove unassigned
@@ -84,7 +83,7 @@ events_line3$Line <- rep("Line3",15)
 #' # Line 26
 #' 
 #' #' Read in Excel
-as_line26 <- read_excel("doc/line26 - control.xlsx")
+as_line26 <- read_excel("doc/line26_control_stranded.xlsx")
 #' Get the frequency per splicing event
 events_line26 <- as.data.frame(table(as_line26$Event))
 #' Remove unassigned
@@ -99,6 +98,9 @@ events_line26$Annotation <- c("Alt 5'/3'","Alt 3'", "Alt 3'", "Alt 5'", "Alt 5'"
 events_line26$Line <- rep("Line26",16)
 
 events_all <- rbind(events_line3,events_line26)
+
+#' Filter some types of events
+events_all <- events_all[which(!events_all$Annotation %in% c("ASCE", "Undefined", "IoR", "Novel")),]
 
 #' Plot 
 ggplot(data = events_all, aes(x = Line, y = Percentage, fill = Annotation,
