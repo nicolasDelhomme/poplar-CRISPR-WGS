@@ -5,7 +5,7 @@ set -eu
 proj=u2023008
 mail=kristina.benevides@umu.se
 out=/mnt/ada/projects/aspseq/mschmid/poplar-CRISPR-WGS/RNA-seq/alternative_splicing
-in=$(realpath ../reference/gff/Potra02_genes.gff)
+in=$(realpath ../reference/gtf/Potra02_genes.gtf)
 suppa2_sif=$(realpath ../singularity/SUPPA2.sif)
 
 if [ ! -d $out ]; then

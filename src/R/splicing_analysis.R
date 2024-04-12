@@ -79,6 +79,8 @@ events_line3$Percentage <- (events_line3$Freq / total_events_line3) * 100
 events_line3$Annotation <- c("Alt 3'", "Alt 3'", "Alt 5'", "Alt 5'", "ASCE", "ES", "ES", "IoR", "IR", "IR", "Novel", "Novel", "Novel", "Novel", "Undefined")
 #' Add annotation for line for plotting
 events_line3$Line <- rep("Line3",15)
+#' Filter some types of events
+events_line3 <- events_line3[which(!events_line3$Annotation %in% c("ASCE", "Undefined", "IoR", "Novel")),]
 
 #' # Line 26
 #' 
@@ -96,17 +98,72 @@ events_line26$Percentage <- (events_line26$Freq / total_events_line26) * 100
 events_line26$Annotation <- c("Alt 5'/3'","Alt 3'", "Alt 3'", "Alt 5'", "Alt 5'", "ASCE", "ES", "ES", "IoR", "IR", "IR", "Novel", "Novel", "Novel", "Novel", "Undefined")
 #' Add annotation for line for plotting
 events_line26$Line <- rep("Line26",16)
-
-events_all <- rbind(events_line3,events_line26)
-
 #' Filter some types of events
-events_all <- events_all[which(!events_all$Annotation %in% c("ASCE", "Undefined", "IoR", "Novel")),]
+events_line26 <- events_line26[which(!events_line26$Annotation %in% c("ASCE", "Undefined", "IoR", "Novel")),]
+
+#' Local AS events annotated in the Potra genome (from SUPPA2)
+#' 
+
+es_anno <- 2874
+ir_anno <- 7215
+three_anno <- 4128
+five_anno <- 5080
+
+total_as_annotated <- es_anno + ir_anno + three_anno + five_anno
+
+events_as_anno <- data.frame(
+  Var1 = c("ES","IR", "Alt 3'", "Alt 5'"),
+  Freq = c(es_anno, ir_anno, three_anno, five_anno),
+  Annotation = c("ES", "IR", "Alt 3'", "Alt 5'"),
+  Percentage = c(es_anno, ir_anno, three_anno, five_anno) / total_as_annotated, 
+  Line = rep("Total Annotated", 4)
+)
+
+
+#' Combine events for Line 3 and Total Annotated
+events_line3_anno <- rbind(events_line3,events_as_anno)
 
 #' Plot 
-ggplot(data = events_all, aes(x = Line, y = Percentage, fill = Annotation,
+ggplot(data = events_line3_anno, aes(x = Line, y = Percentage, fill = Annotation,
                               label = sprintf("%.02f", Percentage))) + geom_bar(position = "fill", stat = "identity") +
   scale_fill_viridis_d() +  # Colorblind-friendly and print-friendly palette
   theme(axis.text.x = element_text(size = 12),
         axis.text.y = element_text(size = 12),
-        axis.title = element_text(size = 14)) 
+        axis.title = element_text(size = 14)) +
+  labs(x = "", y = "% AS events")
 
+#' Combine events for Line 3 and Total Annotated
+events_line26_anno <- rbind(events_line26,events_as_anno)
+
+#' Plot 
+ggplot(data = events_line26_anno, aes(x = Line, y = Percentage, fill = Annotation,
+                                     label = sprintf("%.02f", Percentage))) + geom_bar(position = "fill", stat = "identity") +
+  scale_fill_viridis_d() +  # Colorblind-friendly and print-friendly palette
+  theme(axis.text.x = element_text(size = 12),
+        axis.text.y = element_text(size = 12),
+        axis.title = element_text(size = 14)) +
+  labs(x = "", y = "% AS events")
+
+
+#' Compare with DE genes
+#' 
+#' Line 3
+
+DEG_line3 <- read_csv("analysis/DE/Line03_genes.csv") 
+
+colnames(DEG_line3)[1] <- "Locus"
+
+common_genes_line3 <- intersect(as_line3$Locus, DEG_line3$Locus)
+
+print(paste0("Number of Transcription and AS regulated genes: ", length(common_genes_line3)))
+
+#' 
+#' Line 26
+
+DEG_line26 <- read_csv("analysis/DE/Line26_genes.csv") 
+
+colnames(DEG_line26)[1] <- "Locus"
+
+common_genes_line26 <- intersect(as_line26$Locus, DEG_line26$Locus)
+
+print(paste0("Number of Transcription and AS regulated genes: ", length(common_genes_line26)))
