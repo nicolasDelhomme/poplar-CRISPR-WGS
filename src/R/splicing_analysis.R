@@ -157,6 +157,7 @@ common_genes_line3 <- intersect(as_line3$Locus, DEG_line3$Locus)
 
 print(paste0("Number of Transcription and AS regulated genes: ", length(common_genes_line3)))
 
+write_csv(as.data.frame(common_genes_line3), "DE_AS_genes_line3.csv")
 #' 
 #' Line 26
 
@@ -167,3 +168,5 @@ colnames(DEG_line26)[1] <- "Locus"
 common_genes_line26 <- intersect(as_line26$Locus, DEG_line26$Locus)
 
 print(paste0("Number of Transcription and AS regulated genes: ", length(common_genes_line26)))
+
+write_csv(as.data.frame(common_genes_line26), "DE_AS_genes_line26.csv")

@@ -1,6 +1,6 @@
 import gzip
 
-
+# Read genome file
 def read_genome_file(genome_file):
     genome_sequences = {}
     current_chr = None

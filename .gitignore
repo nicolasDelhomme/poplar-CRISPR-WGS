@@ -54,3 +54,4 @@ results
 results/
 
 out*
+*.log
