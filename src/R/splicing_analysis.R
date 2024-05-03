@@ -1,8 +1,97 @@
-library(ASpli)
-library(GenomicFeatures)
-library(readxl)
-library(tidyverse)
+suppressPackageStartupMessages({
+  library(ASpli)
+  library(GenomicFeatures)
+  library(readxl)
+  library(openxlsx)
+  library(tidyverse)
+  library(here)
+  library(gplots)
+  library(RColorBrewer)
+})
 
+suppressMessages({
+  source(here("UPSCb-common/src/R/topGoUtilities.R"))
+  source(here("UPSCb-common/src/R/featureSelection.R"))
+})
+
+
+#' * Functions
+#' 
+
+#' Extract results and make GO enrichment plots
+extractEnrichmentResults <- function(enrichment,
+                                     go.namespace=c("BP","CC","MF"),
+                                     genes=NULL,export=FALSE,plot=TRUE,
+                                     default_dir=here("analysis/splicing_analysis"),
+                                     default_prefix="DAS-",
+                                     sample_name=NULL){
+  # sanity
+  if(is.null(unlist(enrichment)) | length(unlist(enrichment)) == 0){
+    message("No GO enrichment for",names(enrichment))
+  } else {
+    # write out
+    if(export){
+      write_tsv(bind_rows(enrichment),
+                file=here(default_dir,
+                          paste0(default_prefix,sample_name,"-genes_GO-enrichment.tsv")))
+      if(!is.null(genes)){
+        write_tsv(
+          enrichedTermToGenes(genes=genes,terms=enrichment$id,url=url,mc.cores=16L),
+          file=here(default_dir,
+                    paste0(default_prefix,sample_name,"-enriched-term-to-genes.tsv"))
+        )
+      }
+    }
+    if(plot){
+      gocatname <- c(BP="Biological Process",
+                     CC="Cellular Component",
+                     MF="Molecular Function")
+      
+      for (n in go.namespace) {
+        dat <- enrichment[[n]]
+        # Print dat to check its content
+        print(dat)
+        
+        # Rest of your code for plotting
+        dat$GeneRatio <- dat$Significant/dat$Annotated
+        dat$adjustedPvalue <- as.numeric(dat$FDR)
+        dat$Count <- as.numeric(dat$Significant)
+        dat <- dat[order(dat$GeneRatio),]
+        dat$Term <- factor(dat$Term, levels = unique(dat$Term))
+        
+        print(
+          ggplot(dat, aes(x = Term, y = GeneRatio, color = adjustedPvalue, size = Count)) + 
+            geom_point() +
+            scale_color_gradient(low = "red", high = "blue") +
+            theme_bw() + 
+            ylab("GeneRatio") + 
+            xlab("") + 
+            ggtitle(paste0("GO enrichment: ", gocatname[n], " for sample: ", sample_name)) +
+            coord_flip()
+        )
+      }
+    }
+  }
+}
+
+#'  Define a function to process and export data for each GO term
+process_GO_term <- function(term_type) {
+  # Create data frame for the current GO term
+  export_enr <- data.frame(
+    GO.ID = term_type$GO.ID, 
+    Term = term_type$Term, 
+    Annotated = term_type$Annotated,
+    Significant = term_type$Significant,
+    Expected = term_type$Expected,
+    FDR = term_type$FDR,
+    Significant_genes = sapply(term_type$siggenes, function(x) paste(unlist(x), collapse = "|"))
+  )
+  return(export_enr)
+}
+
+#' # Alternative splicing analysis
+#' 
+#' 
 
 #' GFF preprocessing
 gtfFileName <- "reference/gff/Potra02_genes.gff"
@@ -10,10 +99,10 @@ genomeTxDb <- makeTxDbFromGFF( gtfFileName )
 
 saveDb(genomeTxDb,file="Potra_genes.sqlite")
 
-#'  Feature extraction
+#' Feature extraction
 features <- binGenome( genomeTxDb )
 
-#' BAMS and target file
+#' Prepare BAMS and target file
 bams <- list.files("/mnt/ada/projects/aspseq/mschmid/poplar-CRISPR-WGS/RNA-seq/preprocessed/STAR", pattern="*.bam$", full.names = TRUE)
 
 targets <- data.frame(row.names = paste0(rep(c("L03", "L26", "T89"), each = 4), rep("_", times = 12), rep(1:4, times = 3)),
@@ -24,10 +113,12 @@ targets <- data.frame(row.names = paste0(rep(c("L03", "L26", "T89"), each = 4), 
 mBAMs <- data.frame( bam = list.files("/mnt/ada/projects/aspseq/mschmid/poplar-CRISPR-WGS/RNA-seq/preprocessed/STAR/merged", pattern="*.bam$", full.names = TRUE),
                      condition = c("line3","line26", "control"))
 
+#' Read counting against annotated features
 gbcounts <- gbCounts(features=features, targets=targets,
                      minReadLength = 100, maxISize = 50000, libType = "PE", strandMode = 2)
 gbcounts
 
+#' Junction-based de novo counting and splicing signal estimation
 asd <- jCounts(counts=gbcounts, features=features, minReadLength=100)
 
 asd
@@ -61,9 +152,9 @@ exportIntegratedSignals(is_line26,sr=sr_line26,
                         mergedBams = mBAMs)
 
 
-#' T89
-
-#' # Line 3
+#' # Summarize splicing events per mutant
+#' 
+#' ## Line 3
 #' 
 #' #' Read in Excel
 as_line3 <- read_excel("doc/line3_control_stranded.xlsx")
@@ -82,9 +173,9 @@ events_line3$Line <- rep("Line3",15)
 #' Filter some types of events
 events_line3 <- events_line3[which(!events_line3$Annotation %in% c("ASCE", "Undefined", "IoR", "Novel")),]
 
-#' # Line 26
+#' ## Line 26
 #' 
-#' #' Read in Excel
+#' Read in Excel
 as_line26 <- read_excel("doc/line26_control_stranded.xlsx")
 #' Get the frequency per splicing event
 events_line26 <- as.data.frame(table(as_line26$Event))
@@ -101,8 +192,10 @@ events_line26$Line <- rep("Line26",16)
 #' Filter some types of events
 events_line26 <- events_line26[which(!events_line26$Annotation %in% c("ASCE", "Undefined", "IoR", "Novel")),]
 
-#' Local AS events annotated in the Potra genome (from SUPPA2)
+#' ## Get the total annotated events¨
 #' 
+
+#' Local AS events annotated in the Potra genome (from SUPPA2)
 
 es_anno <- 2874
 ir_anno <- 7215
@@ -145,7 +238,22 @@ ggplot(data = events_line26_anno, aes(x = Line, y = Percentage, fill = Annotatio
   labs(x = "", y = "% AS events")
 
 
-#' Compare with DE genes
+#' ## Extract the unique DAS genes
+#' 
+DAS_genes_line3 <- unique(as_line3$Locus)
+
+DAS_genes_line26 <- unique(as_line26$Locus)
+
+write_csv(as.data.frame(DAS_genes_line3), "DAS_genes_line3.csv")
+
+print(paste0("Number of AS regulated genes: ", length(DAS_genes_line3)))
+
+write_csv(as.data.frame(DAS_genes_line26), "DAS_genes_line26.csv")
+
+print(paste0("Number of AS regulated genes: ", length(DAS_genes_line26)))
+
+
+#' ## Compare with DE genes
 #' 
 #' Line 3
 
@@ -170,3 +278,116 @@ common_genes_line26 <- intersect(as_line26$Locus, DEG_line26$Locus)
 print(paste0("Number of Transcription and AS regulated genes: ", length(common_genes_line26)))
 
 write_csv(as.data.frame(common_genes_line26), "DE_AS_genes_line26.csv")
+
+
+#' # GO enrichment using TopGO
+#' 
+
+goannot <- prepAnnot(mapping = "/mnt/picea/storage/reference/Populus-tremula/v2.2/gopher/gene_to_go.tsv")
+p_val_cutoff= 0.05
+padj_method = "none"
+
+#' ## Line3
+#' 
+#background_line3 <- setNames(gb_line3@genes$pvalue, rownames(gb_line3@genes))
+background_line3 <- rownames(gb_line3@genes)
+enr_line3 <- topGO(DAS_genes_line3,background_line3,goannot,alpha=p_val_cutoff,p.adjust=padj_method,getgenes=TRUE)
+
+extractEnrichmentResults(enr_line3, sample_name="Line3")
+
+#' List of GO terms (BP, CC, MF)
+go_terms_line3 <- list(BP = enr_line3$BP, CC = enr_line3$CC, MF = enr_line3$MF)
+
+exported_data_line3 <- lapply(go_terms_line3, process_GO_term)
+
+# Create a new Excel workbook
+wb_line3_1 <- createWorkbook()
+
+# Apply the process_GO_term function to each GO term
+lapply(names(exported_data_line3), function(go_term) {
+  # Create data frame for the current GO term
+  export_line3 <- exported_data_line3[[go_term]]
+  
+  # Add the data frame to a new sheet in the Excel workbook
+  addWorksheet(wb_line3_1, sheetName = go_term)
+  writeData(wb_line3_1, sheet = go_term, x = export_line3)
+})
+
+# Save the Excel workbook
+saveWorkbook(wb_line3_1, "GO_analysis_DAS_genes_Line3.xlsx", overwrite = TRUE)
+
+
+wb_line3_2 <- createWorkbook()
+
+# Iterate over each list element
+for (term in names(exported_data_line3)) {
+  
+  # Extract data for the current term
+  term_data_line3 <- exported_data_line3[[term]]
+  
+  # Perform separation of genes and arrange the data
+  term_data_separated_line3 <- tidyr::separate_rows(term_data_line3, Significant_genes, sep = "\\|")
+  term_data_sorted_line3 <- term_data_separated_line3 %>%
+    group_by(Significant_genes) %>%
+    arrange(Significant_genes) %>%
+    summarize(GO.ID = paste(GO.ID, collapse = "|"))
+  
+  # Add the sorted data to a new sheet in the Excel workbook
+  addWorksheet(wb_line3_2, sheetName = term)
+  writeData(wb_line3_2, sheet = term, x = term_data_sorted_line3)
+}
+
+# Save the Excel workbook
+saveWorkbook(wb_line3_2, "GO_terms_per_gene_Line3.xlsx", overwrite = TRUE)
+
+#' ## Line26
+#' 
+background_line26 <- rownames(gb_line26@genes)
+
+enr_line26 <- topGO(DAS_genes_line26,background_line26,goannot,alpha=p_val_cutoff,p.adjust=padj_method,getgenes=TRUE)
+
+extractEnrichmentResults(enr_line26, sample_name="Line26")
+
+go_terms_line26 <- list(BP = enr_line26$BP, CC = enr_line26$CC, MF = enr_line26$MF)
+
+# Apply the process_GO_term function to each GO term
+exported_data_line26 <- lapply(go_terms_line26, process_GO_term)
+
+# Create a new Excel workbook
+wb_line26_1 <- createWorkbook()
+
+# Apply the process_GO_term function to each GO term
+lapply(names(exported_data_line26), function(go_term) {
+  # Create data frame for the current GO term
+  export_enr <- exported_data_line26[[go_term]]
+  
+  # Add the data frame to a new sheet in the Excel workbook
+  addWorksheet(wb_line26_1, sheetName = go_term)
+  writeData(wb_line26_1, sheet = go_term, x = export_enr)
+})
+
+# Save the Excel workbook
+saveWorkbook(wb_line26_1, "GO_analysis_DAS_genes_Line26.xlsx", overwrite = TRUE)
+
+wb_line26_2 <- createWorkbook()
+
+# Iterate over each list element
+for (term in names(exported_data_line26)) {
+  
+  # Extract data for the current term
+  term_data_line26 <- exported_data_line26[[term]]
+  
+  # Perform separation of genes and arrange the data
+  term_data_separated_line26 <- tidyr::separate_rows(term_data_line26, Significant_genes, sep = "\\|")
+  term_data_sorted_line26 <- term_data_separated_line26 %>%
+    group_by(Significant_genes) %>%
+    arrange(Significant_genes) %>%
+    summarize(GO.ID = paste(GO.ID, collapse = "|"))
+  
+  # Add the sorted data to a new sheet in the Excel workbook
+  addWorksheet(wb_line26_2, sheetName = term)
+  writeData(wb_line26_2, sheet = term, x = term_data_sorted_line26)
+}
+
+# Save the Excel workbook
+saveWorkbook(wb_line26_2, "GO_terms_per_gene_Line26.xlsx", overwrite = TRUE)
