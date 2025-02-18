@@ -256,7 +256,8 @@ need replacing by the variable(s) of interest in your project
 extractEnrichmentResults <- function(enrichment,
                                      diff.exp=c("all","up","dn"),
                                      go.namespace=c("BP","CC","MF"),
-                                     genes=NULL,export=FALSE,plot=TRUE,
+                                     genes=NULL,export=FALSE,
+                                     plot=TRUE,export_pdf=TRUE,
                                      default_dir=here("analysis/DE"),
                                      default_prefix="DE"){
     # process args
@@ -281,38 +282,46 @@ extractEnrichmentResults <- function(enrichment,
                 )
             }
         }
-        if(plot){
-          gocatname <- c(BP="Biological Process",
-            CC="Cellular Component",
-            MF="Molecular Function")
-          degname <- c(all="all DEGs",
-            up="up-regulated DEGs",
-            dn="down-regulated DEGs")
-          lapply(names(enrichment),function(n){
-            lapply(names(enrichment[[n]]),function(de){
-              lapply(names(enrichment[[n]][[de]]),function(gocat){
-                dat <- enrichment[[n]][[de]][[gocat]]
-                if(is.null(dat)){
-                  message("No GO enrichment for ",degname[de]," in category ",gocatname[gocat])
-                  } else {
-                    dat$GeneRatio <- dat$Significant/dat$Annotated
-                    dat$adjustedPvalue <- as.numeric(dat$FDR)
-                    dat$Count <- as.numeric(dat$Significant)
-                    dat <- dat[order(dat$GeneRatio),]
-                    dat$Term <- factor(dat$Term, levels = unique(dat$Term))
-                    ggplot(dat, aes(x =Term, y = GeneRatio, color = adjustedPvalue, size = Count)) + 
-                      geom_point() +
-                      scale_color_gradient(low = "red", high = "blue") +
-                      theme_bw() + 
-                      ylab("GeneRatio") + 
-                      xlab("") + 
-                      ggtitle(paste0("GO enrichment: ",degname[de]," ",gocatname[gocat])) +
-                      coord_flip()
-                    }
-                })
-              })
+      if(plot){
+        gocatname <- c(BP="Biological Process",
+                       CC="Cellular Component",
+                       MF="Molecular Function")
+        degname <- c(all="all DEGs",
+                     up="up-regulated DEGs",
+                     dn="down-regulated DEGs")
+        lapply(names(enrichment),function(n){
+          lapply(names(enrichment[[n]]),function(de){
+            lapply(names(enrichment[[n]][[de]]),function(gocat){
+              dat <- enrichment[[n]][[de]][[gocat]]
+              if(is.null(dat)){
+                message("No GO enrichment for ",degname[de]," in category ",gocatname[gocat])
+              } else {
+                dat$GeneRatio <- dat$Significant/dat$Annotated
+                dat$adjustedPvalue <- parse_double(sub("<","",dat$FDR))
+                stopifnot(all(! is.na(dat$adjustedPvalue)))
+                dat$Count <- as.numeric(dat$Significant)
+                dat <- dat[order(dat$GeneRatio),]
+                dat$Term <- factor(dat$Term, levels = unique(dat$Term))
+                p <- ggplot(dat, aes(x =Term, y = GeneRatio, color = adjustedPvalue, size = Count)) + 
+                  geom_point() +
+                  scale_color_gradient(low = "red", high = "blue") +
+                  theme_bw() + 
+                  ylab("GeneRatio") + 
+                  xlab("") + 
+                  ggtitle(label=paste("GO enrichment:",degname[de]),
+                          subtitle=(gocatname[gocat])) +
+                  coord_flip()
+                
+                print(p)
+                
+                ggsave(file=here(default_dir,
+                                 paste(default_prefix,n,de,gocat,"genes_GO-enrichment.pdf",sep="_")),
+                       p)
+              }
             })
-        }
+          })
+        })
+      }
     }
 }
 ```
@@ -525,9 +534,10 @@ Here we used topGO to calculate GO enrichment of DEGs vs all genes. Any term hav
 
 ```{r}
 background <- rownames(vst)[featureSelect(vst,dds$Genotype,exp=0.00001)]
-goannot <- prepAnnot(mapping = "/mnt/picea/storage/reference/Populus-tremula/v2.2/gopher/gene_to_go.tsv")
+goannot <- prepAnnot(mapping = "/mnt/reference/Populus-tremula/v2.2/gopher/gene_to_go.tsv")
 PvalCutoff = 0.01
 PadjustMethod = "BH"
+dir.create(here("analysis/GO"),showWarnings=FALSE,recursive=FALSE)
 ```
 
 
@@ -539,7 +549,9 @@ suppressMessages(enr.list <- lapply(res.list,function(r){
   lapply(r,topGO,background=background,annotation=goannot,alpha=PvalCutoff,p.adjust=PadjustMethod)
 }))
 
-suppressWarnings(extractEnrichmentResults(enr.list))
+suppressWarnings(invisible(extractEnrichmentResults(enr.list,
+                                          default_dir = here("analysis/GO"),
+                                          default_prefix = "Line26_")))
 ```
 
 ### DEGs from Line03
@@ -550,7 +562,9 @@ suppressMessages(enr.list <- lapply(res.list,function(r){
   lapply(r,topGO,background=background,annotation=goannot,alpha=PvalCutoff,p.adjust=PadjustMethod)
 }))
 
-suppressWarnings(extractEnrichmentResults(enr.list))
+suppressWarnings(invisible(extractEnrichmentResults(enr.list,
+                                          default_dir = here("analysis/GO"),
+                                          default_prefix = "Line03_")))
 ```
 
 ### Common DEGs between two lines
@@ -563,7 +577,9 @@ suppressMessages(enr.list <- lapply(res.list,function(r){
   lapply(r,topGO,background=background,annotation=goannot,alpha=PvalCutoff,p.adjust=PadjustMethod)
 }))
 
-suppressWarnings(extractEnrichmentResults(enr.list))
+suppressWarnings(invisible(extractEnrichmentResults(enr.list,
+                                          default_dir = here("analysis/GO"),
+                                          default_prefix = "Common_Line26_Line03_")))
 ```
 
 ### DEGs from Line26 that are NOT overlapped with any DEGs from Line03
@@ -576,7 +592,9 @@ suppressMessages(enr.list <- lapply(res.list,function(r){
   lapply(r,topGO,background=background,annotation=goannot,alpha=PvalCutoff,p.adjust=PadjustMethod)
 }))
 
-suppressWarnings(extractEnrichmentResults(enr.list))
+suppressWarnings(invisible(extractEnrichmentResults(enr.list,
+                                          default_dir = here("analysis/GO"),
+                                          default_prefix = "Exclusively_Line26_")))
 ```
 
 ### DEGs from Line03 that are NOT overlapped with any DEGs from Line26
@@ -589,7 +607,9 @@ suppressMessages(enr.list <- lapply(res.list,function(r){
   lapply(r,topGO,background=background,annotation=goannot,alpha=PvalCutoff,p.adjust=PadjustMethod)
 }))
 
-suppressWarnings(extractEnrichmentResults(enr.list))
+suppressWarnings(invisible(extractEnrichmentResults(enr.list,
+                                          default_dir = here("analysis/GO"),
+                                          default_prefix = "Exclusively_Line03_")))
 ```
 
 # Session Info 
